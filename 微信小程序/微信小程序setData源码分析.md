@@ -1,21 +1,21 @@
 ## 小程序逻辑层框架源码
 - 微信小程序运行在三端：iOS（iPhone/iPad）、Android 和 用于调试的开发者工具。在开发工具上，小程序逻辑层的 javascript 代码是运行在 NW.js 中，视图层是由 Chromium 60 Webview 来渲染的。这里简单点就直接通过开发者工具来查找源码。
 - 在微信开发者工具中，编译运行你的小程序项目，然后打开控制台，输入 document 并回车，就可以看到小程序运行时，WebView 加载的完整的 WAPageFrame.html，如下图：
-![wx doucument](/img/wx_document.png)
+![wx doucument](./img/wx_document.png)
 可以看到`./__dev__/WAService.js`这个库就小程序逻辑层基础库，提供逻辑层基础的 API 能力
 
 ## 查找WAService.js源码
 - 在微信小程序 IDE 控制台输入 openVendor 命令，可以打开微信小程序开发工具的资源目录
-![wx openvendor](/img/wx_openvendor.png)
+![wx openvendor](./img/wx_openvendor.png)
 我们可以看到小程序各版本的运行时包 .wxvpkg。.wxvpkg 文件可以使用 [wechat-app-unpack](https://github.com/leo9960/wechat-app-unpack) 解开，解开后里面就是 WAService.js 和 WAWebView.js 等代码。
-![wx unpack](/img/wx_unpack.png)
+![wx unpack](./img/wx_unpack.png)
 
 - 另外也可以只直接通过开发者工具的Sources面板查找到WAWebView.js的源码
-![wx domain](/img/wx_domain.png)
+![wx domain](./img/wx_domain.png)
 
 ## 分析setData源码
 - 在WAWebView.js中全局查找setData方法，找到定义此方法的地方，如下
-![wx setdata](/img/wx_setdata.png)
+![wx setdata](./img/wx_setdata.png)
 
 - setData函数定义中添加了关键的注释如下：
 ```js
