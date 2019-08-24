@@ -16,7 +16,7 @@
 ## 查找WAService.js源码
 - 在微信小程序 IDE 控制台输入 openVendor 命令，可以打开微信小程序开发工具的资源目录
 ![wx openvendor](./img/wx_openvendor.png)
-我们可以看到小程序各版本的运行时包 .wxvpkg。.wxvpkg 文件可以使用 [wechat-app-unpack](https://github.com/leo9960/wechat-app-unpack) 解开，解开后里面就是`WAService.js` 和 `WAWebView.js` 等代码。
+- 我们可以看到小程序各版本的运行时包 .wxvpkg。.wxvpkg 文件可以使用 [wechat-app-unpack](https://github.com/leo9960/wechat-app-unpack) 解开，解开后里面就是`WAService.js` 和 `WAWebView.js` 等代码
 ![wx unpack](./img/wx_unpack.png)
 
 - 另外也可以只直接通过开发者工具的Sources面板查找到WAWebView.js的源码
@@ -148,6 +148,7 @@ function j(e, t) {
 }
 ```
 - 最后通过`r && (r[o] = y(c[e]))`的方式将新的值赋给匹配出的子对象的属性，这里j(e,t)函数内部是通过引用的方式向外传递出`r`，所以这里改变`r[o]`的值也会将`u.data`内部的值相应修改,完成局部刷新
+- 由于不同的版本解包后，里面压缩之后的方法名称可能跟上面的对不上，但是大体的结构都是一样的
 
 ## 总结
 1. 官方提供的array[2].message，a.b.c.d方式就是通过解析成[array,2,message]和[a,b,c,d],找到相应的子结构进行复制操作,到达减少数据量的目的;
