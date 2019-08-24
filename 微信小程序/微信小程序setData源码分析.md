@@ -1,3 +1,12 @@
+## 背景
+- setData 是小程序开发中使用最频繁的接口，也是最容易引发性能问题的接口。详见[官网描述](https://developers.weixin.qq.com/miniprogram/dev/framework/performance/tips.html)
+- 常见的 setData 操作错误
+    1. 频繁的去 setData
+    2. 每次 setData 都传递大量新数据
+    3. 后台态页面进行 setData
+- 针对第二点官网给出意见是,**其中 key 可以以数据路径的形式给出，支持改变数组中的某一项或对象的某个属性，如 array[2].message，a.b.c.d，并且不需要在 this.data 中预先定义**
+- 下面通过源码深入分析的方式了解小程序是怎么针对数据路径进行组装和构造数据
+
 ## 小程序逻辑层框架源码
 - 微信小程序运行在三端：iOS（iPhone/iPad）、Android 和 用于调试的开发者工具。在开发工具上，小程序逻辑层的 javascript 代码是运行在 NW.js 中，视图层是由 Chromium 60 Webview 来渲染的。这里简单点就直接通过开发者工具来查找源码。
 - 在微信开发者工具中，编译运行你的小程序项目，然后打开控制台，输入 document 并回车，就可以看到小程序运行时，WebView 加载的完整的 WAPageFrame.html，如下图：
@@ -7,7 +16,7 @@
 ## 查找WAService.js源码
 - 在微信小程序 IDE 控制台输入 openVendor 命令，可以打开微信小程序开发工具的资源目录
 ![wx openvendor](./img/wx_openvendor.png)
-我们可以看到小程序各版本的运行时包 .wxvpkg。.wxvpkg 文件可以使用 [wechat-app-unpack](https://github.com/leo9960/wechat-app-unpack) 解开，解开后里面就是 WAService.js 和 WAWebView.js 等代码。
+我们可以看到小程序各版本的运行时包 .wxvpkg。.wxvpkg 文件可以使用 [wechat-app-unpack](https://github.com/leo9960/wechat-app-unpack) 解开，解开后里面就是`WAService.js` 和 `WAWebView.js` 等代码。
 ![wx unpack](./img/wx_unpack.png)
 
 - 另外也可以只直接通过开发者工具的Sources面板查找到WAWebView.js的源码
@@ -16,7 +25,8 @@
 ## 分析setData源码
 - 在WAWebView.js中全局查找setData方法，找到定义此方法的地方，如下
 ![wx setdata](./img/wx_setdata.png)
-
+- 源代码使用了大量的[逗号运算符](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript/Reference/Operators/Comma_Operator)，逗号运算符的优先级是最低的，比条件选择符还低
+- 大量使用[void 0](https://github.com/lessfish/underscore-analysis/issues/1) 表示undefined 
 - setData函数定义中添加了关键的注释如下：
 ```js
 function(c, e) {
@@ -37,8 +47,7 @@ function(c, e) {
               , n = j(u.data, t)
               , r = n.obj
               , o = n.key;
-            if (r && (r[o] = y(c[e])),
-            void 0 !== c[e]) {
+            if (r && (r[o] = y(c[e])), void 0 !== c[e]) {
                 var i = j(u.__viewData__, t)
                   , a = i.obj
                   , s = i.key;
@@ -53,7 +62,9 @@ function(c, e) {
     }
 }
 ```
-- 关键函数N(e)，解析属性名(包含.和[]等数据路径符号)，返回相应的层级数组，关键的注释如下
+- 关键函数N(e)，解析属性名(包含.和[]等数据路径符号)，返回相应的层级数组，如
+    `{abc: 1}中abc属性名 => [abc], {a.b.c: 1}中'a.b.c'属性 => [a,b,c], {"array[0].text": 1} => [array, 0, text]`
+关键的注释如下
 ```js
 function N(e) {
     // 如果属性名不是String字符串就抛出异常
@@ -99,8 +110,7 @@ function N(e) {
             r += c  // 普通类型的字符就直接拼接到r中
     }
     // 将普通的字符串属性名，.和]后面剩余的字符串保存到数组n中,如{abc: 1} => [abc], {a.b.c: 1} => [a,b,c], {array[0].text: 1} => [array, 0, text]
-    if (r && n.push(r),
-    0 === n.length)
+    if (r && n.push(r),0 === n.length)
         throw E("数据路径错误", "Path can not be empty"),
         new M("Path can not be empty");
     return n
@@ -137,4 +147,21 @@ function j(e, t) {
     }
 }
 ```
-- 最后通过`r && (r[o] = y(c[e]))`的方式将新的值赋给匹配出的子对象的属性，这里j(e,t)函数内部是通过应用的方式向外传递出`r`，所以这里改变`r[o]`的值也会将`c`内部的值相应修改
+- 最后通过`r && (r[o] = y(c[e]))`的方式将新的值赋给匹配出的子对象的属性，这里j(e,t)函数内部是通过引用的方式向外传递出`r`，所以这里改变`r[o]`的值也会将`u.data`内部的值相应修改,完成局部刷新
+
+## 总结
+1. 官方提供的array[2].message，a.b.c.d方式就是通过解析成[array,2,message]和[a,b,c,d],找到相应的子结构进行复制操作,到达减少数据量的目的;
+2. 分页加载的时候，为了避免将整个list数据重新传输，就可以利用数据路径的方式只追加新的数据
+```js
+假设原数组长度 length 为 10，新数组 newList 长度为 3
+this.setData{
+  'list[10]': newList[0],
+  'list[11]': newList[1],
+  'list[12]': newList[2],
+}
+```
+
+## 参考资料
+- [微信小程序技术原理分析](https://zhaomenghuan.js.org/blog/wechat-miniprogram-principle-analysis.html)
+- [小程序 setData 学问多](http://km.oa.com/articles/show/397665?kmref=search&from_page=1&no=2)
+- [小程序开发指南](https://developers.weixin.qq.com/ebook?action=get_post_info&docid=0008aeea9a8978ab0086a685851c0a)

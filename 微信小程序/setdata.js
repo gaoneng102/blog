@@ -100,11 +100,13 @@ function j(e, t) {
         key: n
     }
 }
+function s(e) {}
 function m(e, t) {
     if ("function" != typeof t)
         throw new TypeError("customizer is must be a Function");
     if ("function" == typeof e)
         return e;
+    // Object.prototype.toString.call(e)获取对象类型
     var n = a.call(e);
     if ("[object Array]" === n)
         return [];
@@ -120,32 +122,48 @@ function m(e, t) {
     var i = t(e);
     return void 0 !== i ? i : null
 }
+/**
+ * 使用类似typeof的方式判断属性值的类型，当类型为object,function时候就返回null,其他string,number,boolean基础类型就返回本值
+ */
 function w(e) {
     var t = Object(b.default)(e);
     return null !== e && "object" !== t && "function" !== t ? e : null
 }
+function T(e, t) {
+    if ("[object Array]" !== Object.prototype.toString.call(e))
+      throw new TypeError("array must be an Array");
+    var n, r, o;
+    for (n = 0, r = e.length; n < r; ++n)
+      if ((o = e[n]) === t || (o != o && t != t)) return n;
+    return -1;
+  }
 var y = function(e) {
+    // e: 表示修改后的属性值 s: 空实现的函数
     var t = 1 < arguments.length && void 0 !== arguments[1] ? arguments[1] : s;
     if (null === e)
         return null;
+    //  当新属性值为string,number,boolean基础类型就返回本值,object,function时候就返回null
     var n = w(e);
     if (null !== n)
         return n;
+    // e为function类型时,r=e; e为Array时，r=[]; e为Object的实例（不含自定义的类型）,r={}; e为Date和RegExp时返回相应的实例
     var r = m(e, t)
       , o = null !== r ? r : e;
     return function e(t, n, r, o, i) {
+        //闭包参数和闭包外面的实参对应关系  t=e, n=t, r=o, o=[e], i=[o]
         if (null === t)
             return null;
+        // 当新属性值为string,number,boolean基础类型就返回本值,object,function时候就返回null
         var a = w(t);
         if (null !== a)
             return a;
+        // S = Object.keys 函数, O = Object.getOwnPropertySymbols(e), s即为t的所有属性名数组
         var s = S(t).concat(O(t));
         var c, u;
         var l, d, f, p, h, g;
-        for (c = 0,
-        u = s.length; c < u; ++c)
-            l = s[c],
-            d = t[l],
+        for (c = 0,u = s.length; c < u; ++c)
+            l = s[c], // 属性名
+            d = t[l], // 属性值
             f = T(o, d),
             g = h = p = void 0,
             -1 === f ? (_ = n,
